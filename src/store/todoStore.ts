@@ -1,153 +1,160 @@
 import { create } from 'zustand';
-import { Todo, TodoItem } from '../types/todo';
+import { TodoList, TodoItem } from '../types/todo';
+import { TodoStorage } from '../services/storage/todoStorage';
 
-interface TodoStore {
-  todos: Record<string, Todo>;
-  currentTodo: string | null;
-  addTodo: (id: string) => void;
-  deleteTodo: (id: string) => void;
-  addItem: (todoId: string, text: string, parentId?: string) => void;
-  updateItem: (todoId: string, itemId: string, text: string) => void;
-  deleteItem: (todoId: string, itemId: string) => void;
-  moveItem: (todoId: string, itemId: string, newParentId: string | null) => void;
+interface TodoState {
+  lists: Record<string, TodoList>;
+  currentList: TodoList | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Actions
+  loadLists: () => Promise<void>;
+  createList: (title: string) => Promise<TodoList>;
+  loadList: (id: string) => Promise<void>;
+  deleteList: (id: string) => Promise<void>;
+  addItem: (text: string, parentId: string | null) => Promise<void>;
+  updateItem: (itemId: string, text: string) => Promise<void>;
+  deleteItem: (itemId: string) => Promise<void>;
+  moveItem: (itemId: string, targetId: string | null, position: 'before' | 'after' | 'child') => Promise<void>;
 }
 
-const createNewTodo = (id: string): Todo => ({
-  id,
-  items: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+export const useTodoStore = create<TodoState>((set, get) => ({
+  lists: {},
+  currentList: null,
+  isLoading: false,
+  error: null,
 
-export const useTodoStore = create<TodoStore>((set) => ({
-  todos: {},
-  currentTodo: null,
-  
-  addTodo: (id) => set((state) => ({
-    todos: { ...state.todos, [id]: createNewTodo(id) },
-    currentTodo: id,
-  })),
-  
-  deleteTodo: (id) => set((state) => {
-    const { [id]: _, ...rest } = state.todos;
-    return { todos: rest, currentTodo: null };
-  }),
-  
-  addItem: (todoId, text, parentId) => set((state) => {
-    const todo = state.todos[todoId];
-    if (!todo) return state;
+  loadLists: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const lists = await TodoStorage.getAllLists();
+      const listsMap = lists.reduce((acc, list) => ({ ...acc, [list.id]: list }), {});
+      set({ lists: listsMap, isLoading: false });
+    } catch (error) {
+      set({ error: 'Failed to load lists', isLoading: false });
+    }
+  },
 
-    const newItem: TodoItem = { id: crypto.randomUUID(), text, children: [] };
-    
-    const updateItems = (items: TodoItem[]): TodoItem[] => {
-      if (!parentId) return [...items, newItem];
-      
-      return items.map(item => {
-        if (item.id === parentId) {
-          return { ...item, children: [...item.children, newItem] };
-        }
-        return { ...item, children: updateItems(item.children) };
+  createList: async (title) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newList = await TodoStorage.createList(title);
+      set(state => ({
+        lists: { ...state.lists, [newList.id]: newList },
+        currentList: newList,
+        isLoading: false
+      }));
+      return newList;
+    } catch (error) {
+      set({ error: 'Failed to create list', isLoading: false });
+      throw error;
+    }
+  },
+
+  loadList: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      const list = await TodoStorage.getList(id);
+      if (list) {
+        set({ currentList: list, isLoading: false });
+      } else {
+        throw new Error('List not found');
+      }
+    } catch (error) {
+      set({ error: 'Failed to load list', isLoading: false });
+    }
+  },
+
+  deleteList: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await TodoStorage.deleteList(id);
+      set(state => {
+        const { [id]: _, ...remainingLists } = state.lists;
+        return {
+          lists: remainingLists,
+          currentList: state.currentList?.id === id ? null : state.currentList,
+          isLoading: false
+        };
       });
-    };
+    } catch (error) {
+      set({ error: 'Failed to delete list', isLoading: false });
+    }
+  },
 
-    return {
-      todos: {
-        ...state.todos,
-        [todoId]: {
-          ...todo,
-          items: updateItems(todo.items),
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    };
-  }),
+  addItem: async (text, parentId) => {
+    const { currentList } = get();
+    if (!currentList) return;
 
-  updateItem: (todoId, itemId, text) => set((state) => {
-    const todo = state.todos[todoId];
-    if (!todo) return state;
+    set({ isLoading: true, error: null });
+    try {
+      const newItem = await TodoStorage.addItem(currentList.id, text, parentId);
+      set(state => ({
+        currentList: state.currentList ? {
+          ...state.currentList,
+          items: [...state.currentList.items, newItem]
+        } : null,
+        isLoading: false
+      }));
+    } catch (error) {
+      set({ error: 'Failed to add item', isLoading: false });
+    }
+  },
 
-    const updateItems = (items: TodoItem[]): TodoItem[] =>
-      items.map(item => {
-        if (item.id === itemId) {
-          return { ...item, text };
-        }
-        return { ...item, children: updateItems(item.children) };
-      });
+  updateItem: async (itemId, text) => {
+    const { currentList } = get();
+    if (!currentList) return;
 
-    return {
-      todos: {
-        ...state.todos,
-        [todoId]: {
-          ...todo,
-          items: updateItems(todo.items),
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    };
-  }),
+    set({ isLoading: true, error: null });
+    try {
+      const updatedItem = await TodoStorage.updateItem(currentList.id, itemId, text);
+      set(state => ({
+        currentList: state.currentList ? {
+          ...state.currentList,
+          items: state.currentList.items.map(item =>
+            item.id === itemId ? updatedItem : item
+          )
+        } : null,
+        isLoading: false
+      }));
+    } catch (error) {
+      set({ error: 'Failed to update item', isLoading: false });
+    }
+  },
 
-  deleteItem: (todoId, itemId) => set((state) => {
-    const todo = state.todos[todoId];
-    if (!todo) return state;
+  deleteItem: async (itemId) => {
+    const { currentList } = get();
+    if (!currentList) return;
 
-    const deleteFromItems = (items: TodoItem[]): TodoItem[] =>
-      items
-        .filter(item => item.id !== itemId)
-        .map(item => ({ ...item, children: deleteFromItems(item.children) }));
+    set({ isLoading: true, error: null });
+    try {
+      await TodoStorage.deleteItem(currentList.id, itemId);
+      set(state => ({
+        currentList: state.currentList ? {
+          ...state.currentList,
+          items: state.currentList.items.filter(item => item.id !== itemId)
+        } : null,
+        isLoading: false
+      }));
+    } catch (error) {
+      set({ error: 'Failed to delete item', isLoading: false });
+    }
+  },
 
-    return {
-      todos: {
-        ...state.todos,
-        [todoId]: {
-          ...todo,
-          items: deleteFromItems(todo.items),
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    };
-  }),
+  moveItem: async (itemId, targetId, position) => {
+    const { currentList } = get();
+    if (!currentList) return;
 
-  moveItem: (todoId, itemId, newParentId) => set((state) => {
-    const todo = state.todos[todoId];
-    if (!todo) return state;
-
-    let movedItem: TodoItem | null = null;
-
-    const removeFromItems = (items: TodoItem[]): TodoItem[] =>
-      items
-        .filter(item => {
-          if (item.id === itemId) {
-            movedItem = item;
-            return false;
-          }
-          return true;
-        })
-        .map(item => ({ ...item, children: removeFromItems(item.children) }));
-
-    const addToNewParent = (items: TodoItem[]): TodoItem[] => {
-      if (!movedItem) return items;
-      
-      if (!newParentId) return [...items, movedItem];
-
-      return items.map(item => {
-        if (item.id === newParentId) {
-          return { ...item, children: [...item.children, movedItem!] };
-        }
-        return { ...item, children: addToNewParent(item.children) };
-      });
-    };
-
-    const updatedItems = removeFromItems(todo.items);
-    
-    return {
-      todos: {
-        ...state.todos,
-        [todoId]: {
-          ...todo,
-          items: addToNewParent(updatedItems),
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    };
-  }),
+    set({ isLoading: true, error: null });
+    try {
+      await TodoStorage.moveItem(currentList.id, itemId, targetId, position);
+      const updatedList = await TodoStorage.getList(currentList.id);
+      if (updatedList) {
+        set({ currentList: updatedList, isLoading: false });
+      }
+    } catch (error) {
+      set({ error: 'Failed to move item', isLoading: false });
+    }
+  }
 }));

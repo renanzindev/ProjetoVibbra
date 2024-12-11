@@ -7,13 +7,27 @@ import { useTodoStore } from '../store/todoStore';
 export const TodoPage: React.FC = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { todos, addTodo, deleteTodo } = useTodoStore();
+  const { 
+    currentList,
+    isLoading, 
+    error,
+    loadList,
+    createList,
+    deleteList
+  } = useTodoStore();
 
   useEffect(() => {
-    if (id && !todos[id]) {
-      addTodo(id);
-    }
-  }, [id, todos, addTodo]);
+    const initList = async () => {
+      try {
+        await loadList(id);
+      } catch (error) {
+        // Se a lista não existir, cria uma nova
+        await createList('My Todo List');
+      }
+    };
+
+    initList();
+  }, [id, loadList, createList]);
 
   const handleShare = async () => {
     try {
@@ -24,18 +38,30 @@ export const TodoPage: React.FC = () => {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this todo list?')) {
-      deleteTodo(id);
+      await deleteList(id);
       navigate('/');
     }
   };
+
+  if (isLoading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="error">{error}</div>;
+  }
+
+  if (!currentList) {
+    return <div className="error">List not found</div>;
+  }
 
   return (
     <div className="todo-page">
       <div className="todo-container">
         <div className="todo-header">
-          <h1 className="todo-title">Todo List</h1>
+          <h1 className="todo-title">{currentList.title}</h1>
           <div className="todo-actions">
             <button onClick={handleShare} className="todo-button todo-button-blue">
               <Share2 className="icon" />
@@ -48,8 +74,8 @@ export const TodoPage: React.FC = () => {
           </div>
         </div>
 
-        <TodoList todoId={id} />
+        <TodoList listId={id} />
       </div>
     </div>
   );
-};
+}

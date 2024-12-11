@@ -7,34 +7,34 @@ export const Home: React.FC = () => {
     <div className="home">
       <div className="container">
         <div className="hero">
-          <h1>Welcome to Vibbraneo ToDo List</h1>
-          <p>Create, manage, and share your todo lists with ease</p>
+          <h1>ToDo List</h1>
+          <p>Crie, gerencie e compartilhe suas listas de tarefas com facilidade</p>
         </div>
 
         <div className="features">
           <div className="card">
             <div className="card-header">
               <Plus className="icon-blue" />
-              <h2>Create New List</h2>
+              <h2>Criar Nova Lista</h2>
             </div>
             <p>
-              Start a new todo list by visiting any URL. The URL will become your unique list identifier.
+            Comece uma nova lista de tarefas visitando qualquer URL. O URL se tornará seu identificador exclusivo da lista.
             </p>
             <Link to="/new" className="button button-primary">
-              Create List
+              Criar Lista
             </Link>
           </div>
 
           <div className="card">
             <div className="card-header">
               <ListTodo className="icon-green" />
-              <h2>Edit Existing List</h2>
+              <h2>Editar lista existente</h2>
             </div>
             <p>
-              Access your existing todo list by visiting its URL. Share the URL with others to collaborate.
+            Acesse sua lista de tarefas existente visitando seu URL. Compartilhe o URL com outras pessoas para colaborar.
             </p>
             <p className="example-url">
-              Example: https://yourdomain.com/any-unique-identifier
+              Examplo: https://yourdomain.com/any-unique-identifier
             </p>
           </div>
         </div>
@@ -42,18 +42,17 @@ export const Home: React.FC = () => {
         <div className="about">
           <div className="card-header">
             <Info className="icon-purple" />
-            <h2>About</h2>
+            <h2>Sobre</h2>
           </div>
           <div className="about-content">
             <p>
-              Vibbraneo ToDo List is a collaborative tool that allows you to:
-            </p>
+              ToDo List é uma ferramenta colaborativa que permite:            </p>
             <ul>
-              <li>Create and manage hierarchical todo lists</li>
-              <li>Share lists with colleagues via URL</li>
-              <li>Organize items with sub-items</li>
-              <li>Edit and delete items easily</li>
-              <li>Collaborate in real-time</li>
+              <li>Crie e gerencie listas de tarefas hierárquicas</li>
+              <li>Compartilhe listas com colegas via URL</li>
+              <li>Organize itens com subitens</li>
+              <li>Edite e exclua itens facilmente</li>
+              <li>Colabore em tempo real</li>
             </ul>
           </div>
         </div>

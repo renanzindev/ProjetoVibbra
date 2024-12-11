@@ -1,0 +1,65 @@
+.todo-item {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.todo-item.dragging {
+  opacity: 0.5;
+}
+
+.todo-item-preview {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.todo-item-preview-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #3b82f6;
+}
+
+.todo-item-preview-before .todo-item-preview-line {
+  top: 0;
+}
+
+.todo-item-preview-after .todo-item-preview-line {
+  bottom: 0;
+}
+
+.todo-item-preview-child {
+  background-color: rgba(59, 130, 246, 0.1);
+  height: 100%;
+  border: 2px solid #3b82f6;
+  border-radius: 0.375rem;
+}
+
+.todo-item-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  background-color: white;
+  transition: all 0.2s;
+  cursor: move;
+  z-index: 2;
+}
+
+.todo-item-content:hover {
+  background-color: #f3f4f6;
+}
+
+.todo-children {
+  margin-left: 2rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+/* Rest of the existing styles... */
